@@ -1,0 +1,45 @@
+{
+  "totalArticles": 3,
+  "articles": [
+    {
+      "id": "sample0001",
+      "title": "Sample utility trials vehicle-to-grid charging for electric vehicles",
+      "description": "A sample utility says <b>electric vehicles</b> parked overnight could feed power back to the grid.",
+      "content": "A sample utility company has started a trial in which electric vehicles parked overnight send stored power back to the local grid... [2154 chars]",
+      "url": "https://www.example-energy.com/news/v2g-trial?utm_source=gnews",
+      "image": "https://www.example-energy.com/images/v2g.jpg",
+      "publishedAt": "2026-11-11T16:20:00Z",
+      "lang": "en",
+      "source": {
+        "id": "sample-energy",
+        "name": "Example Energy News",
+        "url": "https://www.example-energy.com",
+        "country": "us"
+      }
+    },
+    {
+      "id": "sample0002",
+      "title": "Electric vehicles  charging prices fall in sample region",
+      "description": "",
+      "content": "Public charging prices fell... [980 chars]",
+      "url": "https://news.example.net/ev-charging-prices",
+      "image": null,
+      "publishedAt": "2026-11-10T08:05:30Z",
+      "lang": "en",
+      "source": {
+        "id": "sample-net",
+        "name": "Example Net",
+        "url": "https://news.example.net"
+      }
+    },
+    {
+      "id": "sample0003",
+      "title": "",
+      "description": "Entry without a title is ignored.",
+      "content": "",
+      "url": "https://example.org/untitled",
+      "publishedAt": "2026-11-10T00:00:00Z",
+      "source": {"name": "Example Org", "url": "https://example.org"}
+    }
+  ]
+}

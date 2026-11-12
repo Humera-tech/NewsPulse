@@ -1,0 +1,40 @@
+{
+  "articles": [
+    {
+      "url": "https://www.example.com/business/2026/11/11/battery-plant-opens?utm_source=gdelt&utm_medium=feed",
+      "url_mobile": "",
+      "title": "Battery plant for electric vehicles opens in Ohio",
+      "seendate": "20261111T081500Z",
+      "socialimage": "",
+      "domain": "example.com",
+      "language": "English",
+      "sourcecountry": "United States"
+    },
+    {
+      "url": "https://news.example.org/tech/ev-charging-network-expands/",
+      "url_mobile": "",
+      "title": "EV charging network expands   along interstate highways",
+      "seendate": "20261110T193000Z",
+      "socialimage": "",
+      "domain": "news.example.org",
+      "language": "English",
+      "sourcecountry": "United Kingdom"
+    },
+    {
+      "url": "https://example.net/old-story",
+      "url_mobile": "",
+      "title": "Electric vehicle sales figures from last quarter",
+      "seendate": "20261001T120000Z",
+      "socialimage": "",
+      "domain": "example.net",
+      "language": "English",
+      "sourcecountry": "Canada"
+    },
+    {
+      "url": "",
+      "title": "Entry without a URL is ignored",
+      "seendate": "20261111T000000Z",
+      "domain": "example.info"
+    }
+  ]
+}

@@ -1,0 +1,41 @@
+{
+  "response": {
+    "status": "ok",
+    "userTier": "developer",
+    "total": 2,
+    "startIndex": 1,
+    "pageSize": 20,
+    "currentPage": 1,
+    "pages": 1,
+    "orderBy": "newest",
+    "results": [
+      {
+        "id": "environment/2026/nov/11/sample-electric-vehicles-story",
+        "type": "article",
+        "sectionId": "environment",
+        "sectionName": "Environment",
+        "webPublicationDate": "2026-11-11T09:45:12Z",
+        "webTitle": "Sample city expands electric vehicle bus fleet",
+        "webUrl": "https://www.example.co.uk/environment/2026/nov/11/sample-electric-vehicles-story",
+        "apiUrl": "https://content.example.co.uk/environment/2026/nov/11/sample-electric-vehicles-story",
+        "fields": {
+          "trailText": "<p>The council says the new <strong>electric buses</strong> will cut emissions &amp; noise.</p>",
+          "bodyText": "The sample city council has added forty electric buses to its public transport fleet. Officials said the vehicles will replace older diesel models over the next two years. The council expects the change to reduce local air pollution and noise in the city centre. Funding for the project came from a regional transport grant approved earlier this year. Drivers have completed training on the new vehicles and charging equipment at the main depot. Passengers will begin using the first electric routes next month, according to the council."
+        },
+        "isHosted": false,
+        "pillarId": "pillar/news",
+        "pillarName": "News"
+      },
+      {
+        "id": "business/2026/nov/10/sample-no-body",
+        "type": "liveblog",
+        "webPublicationDate": "2026-11-10T07:00:00Z",
+        "webTitle": "Electric vehicles: live updates from the sample motor show",
+        "webUrl": "https://www.example.co.uk/business/live/2026/nov/10/sample-no-body",
+        "fields": {
+          "trailText": "Follow the latest announcements about electric vehicles from the sample motor show."
+        }
+      }
+    ]
+  }
+}
