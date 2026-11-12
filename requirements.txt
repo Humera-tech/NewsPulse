@@ -1,0 +1,10 @@
+requests
+feedparser
+trafilatura
+googlenewsdecoder
+rapidfuzz
+pydantic>=2
+python-dotenv
+rich
+google-genai
+pytest
