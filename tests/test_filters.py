@@ -6,14 +6,19 @@ import json
 from datetime import datetime, timezone
 
 from newspulse.filters import (
+    clean_title,
     clean_url,
     dedupe,
     filter_by_date,
     is_academic_url,
+    is_finance_spam,
+    is_media_url,
     is_relevant,
     normalize_url,
+    repair_gdelt_spacing,
 )
 from newspulse.pipeline import (
+    choose_title,
     collect_articles,
     interleave_by_publisher,
     interleave_by_source,
@@ -156,10 +161,205 @@ def test_relevance_trims_outer_stopwords_from_phrase() -> None:
     assert not is_relevant("the future of electric vehicles", "Electric vehicles: the future", None)
 
 
-def test_single_word_topic_uses_1500_char_window() -> None:
-    """Single-word topics still search the title and the first 1500 characters."""
-    assert is_relevant("cybersecurity", "Bank report", "x " * 400 + "cybersecurity spending rose")
-    assert not is_relevant("cybersecurity", "Bank report", "x " * 800 + "cybersecurity")
+def test_single_word_topic_uses_500_char_window() -> None:
+    """Single-word topics search the title and the first 500 characters (like multi-word)."""
+    assert is_relevant("cybersecurity", "Bank report", "x " * 200 + "cybersecurity spending rose")
+    assert not is_relevant("cybersecurity", "Bank report", "x " * 300 + "cybersecurity")
+    assert is_relevant("cybersecurity", "Cybersecurity budget grows", "x " * 2000)
+
+
+# ------------------------------------------------------ finance spam
+
+
+def test_finance_spam_titles_are_detected() -> None:
+    """Ticker-in-parentheses and stock-move phrases are auto-generated posts."""
+    for title in (
+        "SysGroup (LON:SYS) Stock Price Down 2.8% - Here's Why",
+        "SysGroup ( LON : SYS ) Stock Price Down 2 . 8 % – Here Why",  # raw GDELT spacing
+        "Example Corp (NASDAQ:EXMP) Shares Sold by Sample Advisors",
+        "Sample Inc (NYSE:SMP) Raises Dividend",
+        "Maple Co (TSE:MPL) holds steady",
+        "Widget Ltd Stock Price Up 4% on Volume",
+        "Example Corp Shares Gap Down",
+        "Analysts Lift Example Corp Price Target to $40",
+    ):
+        assert is_finance_spam(title), title
+
+
+def test_normal_news_is_not_finance_spam() -> None:
+    """Real headlines, including ones about markets, are kept."""
+    for title in (
+        "Global EV sales rise 8% in October as Europe, North America rebound",
+        "Stock markets fall after rate decision (live updates)",
+        "Richmond Public Schools expands identity monitoring after cybersecurity breach",
+        "Company (formerly Example) announces new CEO",
+    ):
+        assert not is_finance_spam(title), title
+
+
+def test_prepare_candidates_drops_finance_spam() -> None:
+    """Stock-ticker posts never reach the fetch stage."""
+    items = [make("SysGroup ( LON : SYS ) Stock Price Down 2 . 8 %", "https://a.example/1",
+                  published_at="2026-11-11T00:00:00Z"),
+             make("EV makers report record sales", "https://b.example/2",
+                  published_at="2026-11-11T00:00:00Z")]
+    assert [c.title for c in prepare_candidates(items, days=30)] == ["EV makers report record sales"]
+
+
+# ------------------------------------------------------- title cleaning
+
+
+def test_clean_title_removes_breadcrumbs() -> None:
+    """Everything from the first ' > ' is dropped."""
+    title = "Airmen honored at ceremony > Office of Special Investigations > Article Display"
+    assert clean_title(title, None) == "Airmen honored at ceremony"
+
+
+def test_clean_title_removes_publisher_suffix() -> None:
+    """' | X' and ' - X' are removed only when X is the publisher."""
+    assert clean_title("EV sales rise | Example Times", "Example Times") == "EV sales rise"
+    assert clean_title("EV sales rise - Example Times", "Example Times") == "EV sales rise"
+    assert clean_title("EV sales rise - Daily Political", "dailypolitical.com") == "EV sales rise"
+    assert clean_title("Q&A - What comes next", "Example Times") == "Q&A - What comes next"
+    assert clean_title("Example Times", "Example Times") == "Example Times"  # never empty
+
+
+def test_repair_gdelt_spacing() -> None:
+    """GDELT's spaced-out punctuation is repaired."""
+    assert repair_gdelt_spacing("SysGroup ( LON : SYS ) Stock Price Down 2 . 8 %") == \
+        "SysGroup (LON:SYS) Stock Price Down 2.8%"
+    assert repair_gdelt_spacing("( LON : SYS )") == "(LON:SYS)"
+    assert repair_gdelt_spacing("2 . 8 %") == "2.8%"
+    assert repair_gdelt_spacing("She earned a Ph . D . in physics") == "She earned a Ph.D. in physics"
+    assert repair_gdelt_spacing("Prices rise , sales fall ; analysts : wait !") == \
+        "Prices rise, sales fall; analysts: wait!"
+    assert repair_gdelt_spacing("Talks in the U . S . end") == "Talks in the U.S. end"
+
+
+def test_gdelt_titles_are_repaired_in_prepare() -> None:
+    """prepare_candidates applies the GDELT repair and title cleaning."""
+    item = make("Sample Co ( UK ) wins contract , orders rise 2 . 5 % > News > Article Display",
+                "https://c.example/3", published_at="2026-11-11T00:00:00Z")
+    assert prepare_candidates([item], days=30)[0].title == \
+        "Sample Co (UK) wins contract, orders rise 2.5%"
+
+
+def test_gdelt_prefers_page_title_when_it_matches() -> None:
+    """The page's own title replaces GDELT's, but only if it is the same headline."""
+    candidate = make("Scout Motors has 212 000 reservations as plant nears completion",
+                     "https://d.example/4", source="cnbc.com")
+    page = "Scout Motors has 212,000 reservations as plant nears completion | CNBC"
+    assert choose_title(candidate, page) == \
+        "Scout Motors has 212,000 reservations as plant nears completion"
+    assert choose_title(candidate, "Subscribe to our newsletter") == candidate.title
+    assert choose_title(candidate, None) == candidate.title
+    other = Candidate(title="Original title", url="https://e.example", source="X", published_at=None,
+                      snippet=None, discovered_via="google_news")
+    assert choose_title(other, "Original title, edited") == "Original title"  # GDELT only
+
+
+def test_gdelt_article_uses_page_title_end_to_end() -> None:
+    """A fetched GDELT page supplies the title stored on the Article."""
+
+    class PageFetcher:
+        """Serves the saved article page."""
+
+        def fetch_html(self, url: str) -> str:
+            """Return the saved article HTML."""
+            return read_fixture("article.html")
+
+    candidate = make("Sample town opens public charging hub for electric vehicles | Example Gazette",
+                     "https://f.example/5", published_at="2026-11-10T12:00:00Z", source="example.com")
+    candidate.title = repair_gdelt_spacing("Sample town opens public charging hub for electric vehicles")
+    articles, _ = collect_articles([candidate], "electric vehicles", limit=1, days=3650,
+                                   fetcher=PageFetcher(), sources={})  # type: ignore[arg-type]
+    assert articles[0].title == "Sample town opens public charging hub for electric vehicles"
+
+
+# ------------------------------------------------- video / podcast / live
+
+
+def test_media_urls_are_detected() -> None:
+    """Video, podcast, gallery and live pages are recognised by path segment."""
+    for url in (
+        "https://www.foxbusiness.com/video/6408311436112",
+        "https://www.example.com/news/videos/ev-launch",
+        "https://www.youtube.com/watch?v=abc123",
+        "https://www.example.com/podcast/episode-12",
+        "https://www.example.com/podcasts/tech-weekly/ep-3",
+        "https://www.example.com/gallery/motor-show-in-pictures",
+        "https://www.example.com/live-tv",
+        "https://www.theguardian.com/business/live/2026/nov/10/ev-motor-show-live",
+    ):
+        assert is_media_url(url), url
+
+
+def test_ordinary_articles_are_not_media() -> None:
+    """Words that merely contain a pattern do not count."""
+    for url in (
+        "https://www.example.com/news/watchdog-fines-carmaker",
+        "https://www.example.com/business/video-game-sales-rise",
+        "https://www.example.com/2026/11/12/living-with-an-ev",
+        "https://www.theguardian.com/environment/2026/nov/11/electric-buses",
+    ):
+        assert not is_media_url(url), url
+
+
+def test_prepare_candidates_drops_media_pages() -> None:
+    """Video and live pages are skipped before fetching."""
+    items = [make("Expert discusses EV battery fires", "https://www.foxbusiness.com/video/6408311436112",
+                  published_at="2026-11-11T00:00:00Z"),
+             make("EV motor show live", "https://www.example.co.uk/business/live/2026/nov/10/show",
+                  published_at="2026-11-11T00:00:00Z"),
+             make("EV makers report record sales", "https://b.example/2",
+                  published_at="2026-11-11T00:00:00Z")]
+    assert [c.title for c in prepare_candidates(items, days=30)] == ["EV makers report record sales"]
+
+
+def test_media_page_found_after_google_decoding_is_skipped() -> None:
+    """A Google link that decodes to a video page is skipped without fetching it."""
+
+    class DecodesToVideo:
+        """Fake Google News source whose link decodes to a video page."""
+
+        def resolve_url(self, candidate: Candidate) -> str:
+            """Return a video URL."""
+            return "https://www.foxbusiness.com/video/6408311436112"
+
+    class NoFetch:
+        """Fails the test if any page is fetched."""
+
+        def fetch_html(self, url: str) -> str:
+            """Never expected to be called."""
+            raise AssertionError(f"should not fetch {url}")
+
+    candidate = Candidate(title="Cybersecurity expert breaks down health check failure",
+                          url="https://news.google.com/rss/articles/X", source="Fox Business",
+                          published_at=None, snippet=None, discovered_via="google_news")
+    articles, stats = collect_articles([candidate], "cybersecurity", limit=1, days=7,
+                                       fetcher=NoFetch(),  # type: ignore[arg-type]
+                                       sources={"google_news": DecodesToVideo()})  # type: ignore[dict-item]
+    assert articles == []
+    assert stats.media_pages == 1
+
+
+def test_article_without_usable_text_is_skipped() -> None:
+    """A page with junk text and no snippet is dropped, not kept as a title-only filler."""
+
+    class JunkFetcher:
+        """Serves a page whose only text is a TV schedule."""
+
+        def fetch_html(self, url: str) -> str:
+            """Return a schedule page."""
+            rows = "".join(f"<p>{h}:00 AM - {h}:30 AM</p><p>Paid Programming</p>" for h in range(1, 12))
+            return f"<html><body><article><h1>Cybersecurity</h1>{rows}</article></body></html>"
+
+    candidate = make("Cybersecurity expert on cyberattack fears", "https://g.example/7",
+                     published_at="2026-11-12T00:00:00Z")
+    articles, stats = collect_articles([candidate], "cybersecurity", limit=1, days=3650,
+                                       fetcher=JunkFetcher(), sources={})  # type: ignore[arg-type]
+    assert articles == []
+    assert stats.no_text == 1
 
 
 # ------------------------------------------------------- academic URLs
