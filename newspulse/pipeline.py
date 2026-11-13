@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import logging
-import re
 from collections import Counter, deque
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
@@ -13,13 +12,19 @@ from newspulse.config import Settings, load_settings
 from newspulse.extractor import ExtractedText, choose_text, extract_article
 from newspulse.fetcher import Fetcher, build_session
 from newspulse.filters import (
+    clean_title,
     clean_url,
     dedupe,
     filter_by_date,
     is_academic_url,
+    is_finance_spam,
+    is_media_url,
     is_relevant,
     is_within_days,
     normalize_url,
+    publisher_slug,
+    repair_gdelt_spacing,
+    same_headline,
 )
 from newspulse.models import Article, RunResult, SourceError, fill_missing_fields, parse_iso, utc_now_iso
 from newspulse.sources import Candidate, NewsSource, build_sources, safe_search
@@ -44,9 +49,10 @@ class CollectStats:
     out_of_range: int = 0
     duplicates: int = 0
     academic: int = 0
+    finance_spam: int = 0
+    media_pages: int = 0
     no_text: int = 0
     attempt_cap_hit: bool = False
-    backups: list[Article] = field(default_factory=list)
 
 
 @dataclass
@@ -82,11 +88,24 @@ def discover(
 
 def publisher_key(candidate: Candidate) -> str:
     """Group key for a publisher: 'The Guardian' and 'theguardian.com' both -> 'theguardian'."""
-    name = (candidate.source or normalize_url(candidate.url).split("/")[2]).lower()
-    name = name.removeprefix("www.")
-    if "." in name and " " not in name:
-        name = name.split(".")[0]
-    return re.sub(r"[^a-z0-9]", "", name) or "unknown"
+    name = candidate.source or normalize_url(candidate.url).split("/")[2]
+    return publisher_slug(name) or "unknown"
+
+
+def tidy_title(candidate: Candidate) -> str:
+    """Clean a candidate's title: GDELT spacing repair, breadcrumbs, publisher suffix."""
+    title = candidate.title
+    if candidate.discovered_via == "gdelt":
+        title = repair_gdelt_spacing(title)
+    return clean_title(title, candidate.source)
+
+
+def count_by_source(articles: Sequence[Article], source_order: Sequence[str]) -> dict[str, int]:
+    """Articles per source, in source order, listing only sources that contributed."""
+    counts = Counter(article.discovered_via for article in articles)
+    ordered = [name for name in source_order if counts[name]]
+    ordered += sorted(name for name in counts if name not in ordered)
+    return {name: counts[name] for name in ordered}
 
 
 def sort_newest_first(candidates: Sequence[Candidate]) -> list[Candidate]:
@@ -126,10 +145,12 @@ def interleave_by_source(candidates: Sequence[Candidate]) -> list[Candidate]:
 
 
 def prepare_candidates(candidates: Sequence[Candidate], days: int) -> list[Candidate]:
-    """Clean URLs, drop academic papers, dedupe, drop old items, then mix sources/publishers."""
+    """Clean URLs/titles, drop academic papers and stock spam, dedupe, drop old, mix sources."""
     for candidate in candidates:
         candidate.url = clean_url(candidate.url)
-    news = [c for c in candidates if not is_academic_url(c.url)]
+        candidate.title = tidy_title(candidate)
+    news = [c for c in candidates
+            if not is_academic_url(c.url) and not is_media_url(c.url) and not is_finance_spam(c.title)]
     unique = dedupe(news)
     recent = filter_by_date(unique, days)
     logger.info("%d candidates -> %d news -> %d after dedupe -> %d within %d days",
@@ -145,7 +166,17 @@ def _get_text(candidate: Candidate, url: str, fetcher: Fetcher) -> ExtractedText
         # Link could not be decoded; Google's page is not the article, so use the snippet.
         return choose_text(None, candidate.snippet)
     html = fetcher.fetch_html(url)
-    return extract_article(html, candidate.snippet, need_date=candidate.published_at is None)
+    return extract_article(html, candidate.snippet, need_date=candidate.published_at is None,
+                           need_title=candidate.discovered_via == "gdelt")
+
+
+def choose_title(candidate: Candidate, page_title: str | None) -> str:
+    """For GDELT, prefer the page's own title (correct spacing/apostrophes) if it matches."""
+    if candidate.discovered_via == "gdelt" and page_title:
+        cleaned = clean_title(page_title, candidate.source)
+        if same_headline(cleaned, candidate.title):
+            return cleaned
+    return candidate.title
 
 
 def build_article(candidate: Candidate, ctx: CollectContext) -> Article | None:
@@ -156,6 +187,9 @@ def build_article(candidate: Candidate, ctx: CollectContext) -> Article | None:
     if is_academic_url(url):  # decoded Google links are only known at this point
         stats.academic += 1
         return None
+    if is_media_url(url):
+        stats.media_pages += 1
+        return None
     key = normalize_url(url)
     if key in ctx.seen:
         stats.duplicates += 1
@@ -163,17 +197,21 @@ def build_article(candidate: Candidate, ctx: CollectContext) -> Article | None:
 
     extracted = _get_text(candidate, url, ctx.fetcher)
     retrieved_at = utc_now_iso()
+    title = choose_title(candidate, extracted.title)
+    if is_finance_spam(title):
+        stats.finance_spam += 1
+        return None
     published_at = candidate.published_at or extracted.published_at
     if not is_within_days(published_at, ctx.days):
         stats.out_of_range += 1
         return None
-    if not is_relevant(ctx.topic, candidate.title, extracted.text):
+    if not is_relevant(ctx.topic, title, extracted.text):
         stats.not_relevant += 1
         return None
 
     ctx.seen.update({key, normalize_url(candidate.url)})
     return Article(
-        title=candidate.title,
+        title=title,
         source=candidate.source,
         url=url,
         published_at=published_at,
@@ -193,8 +231,7 @@ def try_candidate(candidate: Candidate, ctx: CollectContext) -> Article | None:
         logger.warning("Skipped %s: unexpected error (%s)", candidate.url, exc)
         return None
     if article is not None and article.text_type == "none":
-        ctx.stats.no_text += 1
-        ctx.stats.backups.append(article)  # real but text-less; used only to fill a shortfall
+        ctx.stats.no_text += 1  # no usable full text or snippet: skipped
         return None
     return article
 
@@ -255,7 +292,6 @@ def collect_articles(
 
     progress("Checking that every source is represented...")
     ensure_source_coverage(articles, pending, limit, ctx)
-    articles.extend(ctx.stats.backups[: max(0, limit - len(articles))])
     return articles, ctx.stats
 
 
@@ -300,7 +336,9 @@ def build_shortfall_note(
             f"{stats.out_of_range} outside the date range" if stats.out_of_range else "",
             f"{stats.duplicates} duplicates" if stats.duplicates else "",
             f"{stats.academic} academic papers" if stats.academic else "",
-            f"{stats.no_text} without retrievable text" if stats.no_text else "",
+            f"{stats.finance_spam} auto-generated stock posts" if stats.finance_spam else "",
+            f"{stats.media_pages} video/podcast/live pages" if stats.media_pages else "",
+            f"{stats.no_text} without usable text" if stats.no_text else "",
         ]
         detail = ", ".join(r for r in reasons if r)
         parts.append(f"{stats.checked} of {total_candidates} candidates checked"
@@ -343,7 +381,9 @@ def run_pipeline(
         days=days,
         requested_limit=limit,
         article_count=len(articles),
+        summarizer_requested=summarizer_name,
         sources_queried=[source.name for source in sources],
+        articles_by_source=count_by_source(articles, [source.name for source in sources]),
         source_errors=errors,
         shortfall_note=build_shortfall_note(len(articles), limit, days, len(candidates), stats, errors),
         articles=articles,
