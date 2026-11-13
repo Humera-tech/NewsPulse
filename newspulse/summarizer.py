@@ -14,6 +14,7 @@ from typing import Any, Protocol
 
 from newspulse.config import Settings
 from newspulse.filters import STOPWORDS
+from newspulse.models import shorten_message
 
 logger = logging.getLogger(__name__)
 
@@ -122,14 +123,16 @@ class ExtractiveSummarizer:
     """Word-frequency extractive summarizer. Uses no AI; never rewrites sentences."""
 
     def summarize(self, title: str, text: str | None) -> SummaryResult:
-        """Pick the 2-4 highest-scoring full sentences and return them in original order."""
+        """Pick the 2-4 highest-scoring full sentences, in original order.
+
+        Returns (None, None) when the text has no complete sentence at all.
+        """
         if not text or not text.strip():
             return None, None
         sentences = split_sentences(text)
         candidates = [s for s in sentences if is_full_sentence(s)]
         if not candidates:
-            # Very short excerpt with no complete sentence: summarize only what is there.
-            return " ".join(sentences[:2]), "extractive"
+            return None, None  # never return text that fails the sentence rules
         if len(candidates) <= 2:
             return " ".join(candidates), "extractive"
 
@@ -238,7 +241,8 @@ class GeminiSummarizer:
             try:
                 return self._generate(prompt), "gemini"
             except Exception as exc:  # noqa: BLE001 - one Gemini error must not stop the run
-                detail = " ".join(str(exc).split())[:200] or type(exc).__name__
+                logger.debug("Gemini error detail: %r", exc)
+                detail = shorten_message(str(exc), 160) or type(exc).__name__
                 if is_fatal_gemini_error(exc):
                     self._disable("Gemini model %s is unavailable: %s; using extractive summaries "
                                   "for this run", self.model, detail)
@@ -246,7 +250,6 @@ class GeminiSummarizer:
                 if is_quota_error(exc):
                     # Retrying cannot help until the quota resets, and retries use more of it.
                     self._disable("Gemini quota exceeded; using extractive summaries for this run")
-                    logger.debug("Gemini quota error detail: %s", detail)
                     break
                 if is_retryable_gemini_error(exc) and attempt < attempts:
                     delay = self.retry_delays[attempt - 1]
