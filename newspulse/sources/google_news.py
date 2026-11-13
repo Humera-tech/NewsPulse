@@ -58,8 +58,8 @@ def parse_google_news_feed(content: bytes | str) -> list[Candidate]:
     """Parse a Google News RSS document into candidates (links still Google redirects)."""
     feed = feedparser.parse(content)
     if feed.get("bozo") and not feed.get("entries"):
-        reason = feed.get("bozo_exception")
-        raise SourceUnavailable(f"Google News feed could not be parsed: {reason}")
+        logger.debug("Google News feed parse error: %s", feed.get("bozo_exception"))
+        raise SourceUnavailable("Google News feed could not be parsed")
 
     candidates: list[Candidate] = []
     for entry in feed.get("entries", []):
