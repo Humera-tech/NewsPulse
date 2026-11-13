@@ -34,6 +34,31 @@ ACADEMIC_URL_PATTERNS: tuple[str, ...] = (
     "onlinelibrary.wiley.com",
 )
 
+# Pages skipped before fetching: video, podcast, gallery and live pages have no article text.
+# Each entry is matched against whole URL path segments, so "/watch" matches
+# youtube.com/watch?v=... but not /watchdog-report.
+MEDIA_URL_PATTERNS: tuple[str, ...] = (
+    "/video/",
+    "/videos/",
+    "/watch",
+    "/podcast",
+    "/podcasts/",
+    "/gallery/",
+    "/galleries/",
+    "/live-tv",
+    "/live/",  # live blogs (e.g. Guardian), which have no single article text
+)
+
+# Titles of auto-generated stock-ticker posts (regular expressions, case-insensitive).
+FINANCE_SPAM_PATTERNS: tuple[str, ...] = (
+    # A ticker in parentheses, e.g. (NASDAQ:XXX), (NYSE:XXX), (LON:XXX), (TSE:XXX)
+    r"\(\s*(?:NASDAQ|NYSE|NYSEARCA|NYSEAMERICAN|AMEX|LON|LSE|TSE|TSX|TSXV|ASX|OTC|OTCMKTS"
+    r"|ETR|FRA|EPA|NSE|BSE|HKG)\s*:\s*[A-Z0-9.\-]+\s*\)",
+    r"\bstock price (?:down|up)\b",
+    r"\bshares gap\b",
+    r"\bprice target\b",
+)
+
 # Common short forms accepted in place of a multi-word topic phrase (case-insensitive).
 TOPIC_SHORT_FORMS: dict[str, tuple[str, ...]] = {
     "electric vehicles": ("EV", "EVs"),
