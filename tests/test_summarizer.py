@@ -130,6 +130,25 @@ def test_extractive_rejects_fragments() -> None:
     assert "and this one" not in summary
 
 
+def test_extractive_returns_none_when_no_valid_sentence() -> None:
+    """Text with no complete sentence gives no summary instead of raw fragments."""
+    schedule = "Live Now\nAll times eastern\nNOW - 12:30 AM\nPaid Programming\nFox News Radio"
+    assert ExtractiveSummarizer().summarize("Title", schedule) == (None, None)
+    assert ExtractiveSummarizer().summarize("Title", "Short line. another one") == (None, None)
+
+
+def test_no_valid_sentence_flags_missing_summary() -> None:
+    """Through the pipeline, such an article gets summary=None and 'summary' flagged."""
+    article = Article(title="T", source="S", url="https://e.example/a",
+                      published_at="2026-11-12T00:00:00Z", retrieved_at=utc_now_iso(),
+                      discovered_via="google_news", excerpt="Live Now\nAll times eastern",
+                      text_type="feed_excerpt")
+    summarize_articles([article], ExtractiveSummarizer())
+    assert article.summary is None
+    assert article.summary_method is None
+    assert "summary" in article.missing_fields
+
+
 class FakeAPIError(Exception):
     """Mimics google.genai.errors.APIError, which carries an HTTP `code`."""
 
