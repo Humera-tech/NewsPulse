@@ -82,16 +82,45 @@ def test_gdelt_sends_exactly_one_request_on_success(settings: Settings) -> None:
 def test_gdelt_429_body_is_logged_and_reported(
     monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture, settings: Settings
 ) -> None:
-    """GDELT's own 429 message appears in the log and in the source error."""
+    """The source error is one short sentence; GDELT's full message goes to DEBUG only."""
     monkeypatch.setattr(gdelt.time, "sleep", lambda seconds: None)
     message = "Please limit requests to one every 5 seconds or contact us for larger queries."
     session = FakeSession(FakeResponse(message, status_code=429))
-    with caplog.at_level(logging.INFO, logger="newspulse.sources.gdelt"):
+    with caplog.at_level(logging.DEBUG, logger="newspulse.sources.gdelt"):
         _, error = safe_search(GdeltSource(session, settings), "cybersecurity", 7)
-    assert error is not None and "Please limit requests" in error
-    logged = [r.getMessage() for r in caplog.records]
-    assert any("429 response body: Please limit requests" in m for m in logged)
-    assert sum("GDELT request" in m for m in logged) == 2
+    assert error == "GDELT rate limit reached (HTTP 429)"
+    body_logs = [r for r in caplog.records if "429 response body" in r.getMessage()]
+    assert body_logs and all(r.levelno == logging.DEBUG for r in body_logs)
+    assert message in body_logs[0].getMessage()  # full body, not truncated
+    assert sum("GDELT request" in r.getMessage() for r in caplog.records) == 2
+
+
+def test_gdelt_non_json_error_is_short(caplog: pytest.LogCaptureFixture) -> None:
+    """A plain-text reply gives a one-sentence error; the body is logged at DEBUG."""
+    with caplog.at_level(logging.DEBUG, logger="newspulse.sources.gdelt"):
+        with pytest.raises(SourceUnavailable) as info:
+            parse_gdelt_response("Some long plain-text error page from the server.")
+    assert str(info.value) == "GDELT returned a non-JSON response"
+    assert any("plain-text error page" in r.getMessage() and r.levelno == logging.DEBUG
+               for r in caplog.records)
+
+
+def test_long_source_errors_are_cut_at_a_word_boundary(settings: Settings) -> None:
+    """Unexpected long errors become one line, cut between words with '...'."""
+
+    class Wordy(NewsSource):
+        name = "wordy"
+
+        def search(self, topic: str, days: int) -> list[Candidate]:
+            raise RuntimeError("Something went wrong " + "with a very long explanation " * 10
+                               + "\nsecond line with a stack trace")
+
+    _, error = safe_search(Wordy(FakeSession(FakeResponse()), settings), "x", 7)
+    assert error is not None
+    assert len(error) <= 123 and error.endswith("...")
+    assert "second line" not in error
+    assert error[:-3].split()[-1] in {"Something", "went", "wrong", "with", "a", "very", "long",
+                                      "explanation"}
 
 
 def test_gdelt_session_has_no_automatic_retries(settings: Settings) -> None:
@@ -163,6 +192,7 @@ def test_guardian_search_with_key(settings: Settings) -> None:
     candidates = GuardianSource(session, keyed).search("electric vehicles", 7)
     assert len(candidates) == 2
     _, params = session.calls[0]
+    assert params["type"] == "article"  # excludes live blogs and galleries
     assert params["show-fields"] == "bodyText,trailText"
     assert params["order-by"] == "newest"
     assert params["api-key"] == "test-key"
