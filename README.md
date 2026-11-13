@@ -2,31 +2,31 @@
 
 **Automated news discovery and summarization from the command line.**
 
-You give NewsPulse a topic, such as *"electric vehicles"*, *"cybersecurity"* or
-*"AI regulation"*. It searches public news sources for recent articles, extracts
-the article text, removes duplicates and off-topic results, and writes a short
-summary of each article with a link back to the original.
+Give NewsPulse a topic, such as *"cybersecurity"*, *"electric vehicles"* or
+*"climate change"*. It finds recent news articles from several public sources,
+extracts the article text, filters out duplicates and off-topic results, and
+writes a short summary of each article with a link back to the original.
 
 ```bash
 python main.py --topic "cybersecurity" --limit 5
 ```
 
-All news discovery and retrieval is done by Python code using public APIs, RSS
-feeds and HTTP requests. **No LLM, chatbot or AI search tool is used to find,
-select, fetch or extract articles.** Google Gemini is used only to summarize text
-that the code has already collected, and a non-AI summarizer is built in as a
-fallback.
+> **How AI is used:** all news discovery, retrieval and text extraction is done by
+> Python code using public APIs, RSS feeds and HTTP requests. No LLM, chatbot or
+> AI search tool is used to find, select, fetch or extract articles. Google
+> Gemini is used **only** to summarize text the code has already collected, and a
+> built-in non-AI summarizer takes over whenever Gemini is unavailable.
 
 ---
 
-## Table of contents
+## Contents
 
 - [What it does](#what-it-does)
 - [How it works](#how-it-works)
 - [Architecture](#architecture)
 - [Tech stack](#tech-stack)
-- [Project structure](#project-structure)
 - [Setup](#setup)
+- [Getting the API keys](#getting-the-api-keys)
 - [How to run](#how-to-run)
 - [Output](#output)
 - [Sample run](#sample-run)
@@ -43,47 +43,60 @@ fallback.
 |-------------|--------------------------|
 | Topic input | Passed with `--topic`, or asked for interactively if missing |
 | Article limit | `--limit` option (default 5) |
-| Two or more sources | GDELT, The Guardian API and Google News RSS, covering many publishers |
+| Multiple sources | The Guardian API, GNews API, Google News RSS and GDELT, covering many publishers |
 | Recent news | Keeps articles from the last 7 days by default (`--days` to change) |
-| Metadata | Title, publisher, URL, publication date, retrieval time, article text |
-| Missing data | Kept as `null` and listed in each article's `missing_fields` |
+| Metadata | Title, publisher, URL, publication date, retrieval time and article text |
+| Missing data | Stored as `null` and listed in each article's `missing_fields` |
 | Summaries | 2–4 sentences per article, based only on the collected text |
-| Output | `articles.json`, `articles.csv` and a readable `digest.md`, plus results in the terminal |
-| Reliability | Deduplication, relevance filtering, timeouts, retries, per-source error handling |
-| Shortfall | If fewer articles than requested are found, the output says so and why; nothing is invented |
+| Output | Results in the terminal, plus `articles.json`, `articles.csv` and a readable `digest.md` |
+| Reliability | Deduplication, relevance filtering, timeouts, retries and per-source error handling |
+| Shortfalls | If fewer articles than requested are found, the output says so and why; nothing is invented |
 
 ---
 
 ## How it works
 
-Every run goes through six steps:
+Every run goes through six steps.
 
-1. **Input.** Reads the topic, article limit, day range and summarizer choice.
-2. **Discover.** Searches four sources for the topic:
-   - **GDELT DOC 2.0 API**: a global news index with direct publisher links (no key needed)
-   - **The Guardian Open Platform API**: returns the full article text (free key)
-   - **GNews API**: news search across many publishers with direct article links (free key)
-   - **Google News RSS**: broad coverage of many publishers (no key needed)
-3. **Retrieve.** For GDELT, GNews and Google News results, downloads each article page
-   with `requests`. Google News redirect links are first decoded to the real
-   publisher URL. Requests use a clear user agent, timeouts, retries and a polite
-   delay, and respect `robots.txt`. Paywalls, logins and CAPTCHAs are never
-   bypassed. Guardian articles skip this step because the API already provides
-   the text.
-4. **Clean.** `trafilatura` extracts the main article text and skips menus, ads and
-   comments. Articles are filtered by date and topic relevance, duplicates are
-   removed by URL and by near-identical headline, and results are mixed across
-   publishers. If a page can't be fetched, the source's short snippet is used
-   instead and marked `feed_excerpt`.
-5. **Summarize.** Gemini receives only the extracted text and is instructed to
-   summarize it in 2–4 sentences using nothing else. If no Gemini key is set or a
-   request fails, the extractive summarizer picks the most important sentences
-   straight from the article.
-6. **Export.** Prints the results in the terminal and saves JSON, CSV and a
-   Markdown digest.
+**1. Input.** Reads the topic, article limit, day range and summarizer choice.
 
-If a source fails or blocks a request, the run continues with the other sources
-and the error is reported in the output.
+**2. Discover.** Searches four sources for the topic:
+
+| Source | What it provides |
+|--------|------------------|
+| **The Guardian API** | The Guardian's own articles, with the full text included |
+| **GNews API** | Articles from many publishers, with direct links |
+| **Google News RSS** | Broad, up-to-date coverage of many publishers |
+| **GDELT DOC 2.0 API** | A global news index with direct publisher links |
+
+**3. Retrieve.** For every source except the Guardian (whose API already
+includes the text), NewsPulse downloads the article page. Google News redirect
+links are first decoded to the real publisher URL. Requests use a clear user
+agent, timeouts and a polite delay between calls to the same site, and they
+respect `robots.txt`. Paywalls, logins and CAPTCHAs are never bypassed.
+
+**4. Clean.** `trafilatura` extracts the main article text and leaves out menus,
+ads and comments. Then NewsPulse:
+- drops articles older than the day range;
+- drops off-topic results, video and podcast pages, live blogs, academic papers
+  and auto-generated stock-price posts;
+- removes duplicates by URL and by near-identical headline;
+- cleans titles (removes site breadcrumbs, publisher suffixes and broken spacing);
+- mixes results across sources and publishers.
+
+If a page can't be fetched, the source's short snippet is used instead and
+clearly marked as an excerpt.
+
+**5. Summarize.** Gemini receives only the article's title and extracted text,
+and is instructed to write 2–4 sentences using nothing else. If Gemini is busy,
+it retries twice; if it's unavailable or out of quota, the extractive summarizer
+picks the most important sentences directly from the article.
+
+**6. Export.** Prints the results in the terminal and saves JSON, CSV and a
+Markdown digest. Any source that failed is listed with a short reason.
+
+If one source fails or a site blocks a request, the run continues with
+everything else.
 
 ---
 
@@ -95,30 +108,30 @@ flowchart TD
     B --> C["pipeline.py"]
 
     subgraph DISCOVER["1. Discover (sources/)"]
-        G1["gdelt.py"]
-        G2["guardian.py"]
+        G1["guardian.py"]
+        G2["gnews.py"]
         G3["google_news.py"]
-        G4["gnews.py"]
+        G4["gdelt.py"]
     end
 
     C --> DISCOVER
-    G1 -. "JSON API" .-> S1[("GDELT DOC 2.0")]
-    G2 -. "JSON API" .-> S2[("Guardian Open Platform")]
-    G3 -. "RSS feed" .-> S3[("Google News RSS")]
-    G4 -. "JSON API" .-> S4[("GNews API")]
+    G1 -. "JSON API" .-> S1[("The Guardian")]
+    G2 -. "JSON API" .-> S2[("GNews")]
+    G3 -. "RSS feed" .-> S3[("Google News")]
+    G4 -. "JSON API" .-> S4[("GDELT")]
 
-    DISCOVER --> M["Merge candidates<br/>dedupe + date filter<br/>mix publishers"]
+    DISCOVER --> M["Merge candidates<br/>dedupe, date filter,<br/>mix sources and publishers"]
 
     M --> Q{"Full text<br/>already included?"}
-    Q -- "Yes (Guardian)" --> R["Relevance check"]
-    Q -- "No (GDELT, GNews, Google News)" --> F["2. Retrieve<br/>fetcher.py<br/>robots.txt, timeout, retry"]
+    Q -- "Yes (Guardian)" --> R["Clean titles<br/>relevance and quality filters"]
+    Q -- "No" --> F["2. Retrieve<br/>fetcher.py<br/>robots.txt, timeout, retry"]
     F -. "HTTP" .-> P[("Publisher websites")]
     F --> X["3. Extract<br/>extractor.py (trafilatura)<br/>fallback: feed snippet"]
     X --> R
 
     R --> SUM["4. Summarize<br/>summarizer.py"]
-    SUM -- "default" --> GEM[("Google Gemini API<br/>summaries only")]
-    SUM -- "fallback / no key" --> EXT["Extractive summarizer<br/>(no AI)"]
+    SUM -- "default" --> GEM[("Google Gemini<br/>summaries only")]
+    SUM -- "fallback" --> EXT["Extractive summarizer<br/>(no AI)"]
 
     SUM --> EXP["5. Export<br/>exporter.py + display.py"]
     EXP --> O1["Terminal output"]
@@ -133,54 +146,15 @@ flowchart TD
 |------|----------|
 | Python 3.10+ | Core language |
 | requests | HTTP requests with timeouts and retries |
-| feedparser | Parsing the Google News RSS feed |
+| feedparser | Reading the Google News RSS feed |
 | googlenewsdecoder | Turning Google News redirect links into real publisher URLs |
 | trafilatura | Extracting the main article text from web pages |
 | RapidFuzz | Detecting near-duplicate headlines |
 | Pydantic | Data models and validation |
 | google-genai | Gemini summaries |
-| Rich | Readable, colored terminal output |
+| Rich | Clear, colored terminal output |
 | python-dotenv | Loading API keys from `.env` |
 | pytest | Automated tests |
-
-| Data source | Access | Provides |
-|-------------|--------|----------|
-| GDELT DOC 2.0 API | Public, no key | Article links, titles, dates, publisher domains |
-| The Guardian Open Platform | Free developer key | Article links, titles, dates and full text |
-| GNews API | Free API key | Article links, titles, publishers, dates, short descriptions |
-| Google News RSS | Public, no key | Article links, titles, publishers, dates |
-
----
-
-## Project structure
-
-```
-newspulse-project/
-├── main.py                  # Entry point (command-line options)
-├── newspulse/
-│   ├── __init__.py
-│   ├── config.py            # Settings and environment variables
-│   ├── models.py            # Article and RunResult data models
-│   ├── pipeline.py          # Runs the full workflow from topic to results
-│   ├── sources/
-│   │   ├── __init__.py
-│   │   ├── base.py          # Common interface and error handling for sources
-│   │   ├── gdelt.py         # GDELT DOC 2.0 API
-│   │   ├── guardian.py      # The Guardian Open Platform API
-│   │   └── google_news.py   # Google News RSS + link decoding
-│   ├── fetcher.py           # HTTP requests, retries, robots.txt, rate limiting
-│   ├── extractor.py         # Article text extraction (trafilatura)
-│   ├── filters.py           # Date, relevance and duplicate filtering
-│   ├── summarizer.py        # Gemini and extractive summarizers
-│   ├── exporter.py          # JSON, CSV and Markdown output
-│   └── display.py           # Terminal output (Rich)
-├── tests/                   # Automated tests with saved sample data
-├── output/                  # Results from each run
-├── samples/                 # Sample run included with the submission
-├── requirements.txt
-├── .env.example
-└── .gitignore
-```
 
 ---
 
@@ -195,17 +169,23 @@ git clone https://github.com/<your-username>/newspulse-project.git
 cd newspulse-project
 ```
 
-### 2. Create a virtual environment
+### 2. Create and activate a virtual environment
 
 ```bash
 python -m venv venv
+```
+
+```bash
+# Windows (PowerShell or Command Prompt)
+venv\Scripts\activate
 
 # macOS / Linux
 source venv/bin/activate
-
-# Windows
-venv\Scripts\activate
 ```
+
+> On Windows PowerShell, if activation is blocked with a "running scripts is
+> disabled" error, run `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned`
+> once, then try again.
 
 ### 3. Install dependencies
 
@@ -213,46 +193,86 @@ venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-### 4. Add your API keys
+### 4. Create your `.env` file
 
 ```bash
-# macOS / Linux
-cp .env.example .env
-
 # Windows
 copy .env.example .env
+
+# macOS / Linux
+cp .env.example .env
 ```
 
-Open `.env` and fill in your keys:
+Then add your API keys to it, as explained in the next section.
 
-| Variable | Required | Default | Purpose |
-|----------|----------|---------|---------|
-| `GEMINI_API_KEY` | Recommended | none | Gemini summaries. Get a free key at [Google AI Studio](https://aistudio.google.com/apikey). Without it, the extractive summarizer is used. |
-| `GEMINI_MODEL` | No | `gemini-3.8-flash` | Gemini model used for summaries |
-| `GUARDIAN_API_KEY` | Recommended | none | The Guardian source. Get a free key at [Guardian Open Platform](https://open-platform.theguardian.com/access/). Without it, this source is skipped. |
-| `GNEWS_API_KEY` | Optional | none | The GNews source. Get a free key at [GNews](https://gnews.io/). Without it, this source is skipped. |
-| `REQUEST_TIMEOUT` | No | `10` | Seconds before a request gives up |
+---
 
-The program still runs with **no keys at all**. It uses GDELT and Google News
-with the extractive summarizer.
+## Getting the API keys
 
-Keys are read only from environment variables and are never stored in the code.
-`.env` is listed in `.gitignore` so it is never committed.
+All three keys are **free** and need no credit card. NewsPulse still runs without
+them, but each missing key turns off one feature:
+
+| Key | Without it |
+|-----|------------|
+| `GEMINI_API_KEY` | Summaries use the extractive (non-AI) method |
+| `GUARDIAN_API_KEY` | The Guardian source is skipped |
+| `GNEWS_API_KEY` | The GNews source is skipped |
+
+### Gemini (summaries)
+
+1. Go to [Google AI Studio](https://aistudio.google.com/apikey) and sign in with a Google account.
+2. Click **Create API key** and copy it.
+
+### The Guardian (news source)
+
+1. Go to the [Guardian Open Platform](https://open-platform.theguardian.com/access/)
+   and click **Register developer key**. This is the free, non-commercial key.
+2. Fill in the short form. For *Reason*, choose **Student project**; for *How will
+   content be displayed*, choose **Summary only**.
+3. The key is sent to your email within a few minutes. Check your spam folder too.
+
+### GNews (news source)
+
+1. Sign up at [gnews.io](https://gnews.io/) and choose the **Free** plan.
+2. Confirm your email if asked, then copy the API key from your **Dashboard**.
+
+### Add the keys to `.env`
+
+Open `.env` in a text editor and paste your keys after the `=` signs, with no
+quotes or spaces:
+
+```
+GEMINI_API_KEY=your-gemini-key
+GEMINI_MODEL=gemini-3.8-flash
+GUARDIAN_API_KEY=your-guardian-key
+GNEWS_API_KEY=your-gnews-key
+REQUEST_TIMEOUT=10
+```
+
+Save the file. Keys are only read from this file and never stored in the code.
+`.env` is listed in `.gitignore`, so it is never committed; keep it private.
 
 ---
 
 ## How to run
 
+With the virtual environment active, run:
+
 ```bash
-python main.py --topic "<topic>" [options]
+python main.py --topic "cybersecurity" --limit 5
 ```
+
+The results appear in the terminal and are saved to the `output/` folder.
+A run usually takes about a minute.
+
+### Options
 
 | Option | Default | Description |
 |--------|---------|-------------|
 | `--topic` | *(asks if missing)* | Topic or keywords to search for |
 | `--limit` | `5` | Maximum number of articles (1–50) |
 | `--days` | `7` | Only keep articles from the last N days (1–30) |
-| `--summarizer` | `gemini` | `gemini` or `extractive` (no AI) |
+| `--summarizer` | `gemini` | `gemini`, or `extractive` for non-AI summaries |
 | `--format` | `both` | `json`, `csv` or `both` |
 | `--output-dir` | `output` | Where results are saved |
 | `--verbose` | off | Show detailed progress logs |
@@ -260,55 +280,65 @@ python main.py --topic "<topic>" [options]
 ### Examples
 
 ```bash
-# Basic run
-python main.py --topic "cybersecurity" --limit 5
-
 # Ask for the topic interactively
 python main.py
 
 # 10 articles from the last 3 days
 python main.py --topic "electric vehicles" --limit 10 --days 3
 
-# Without AI summaries
-python main.py --topic "AI regulation" --summarizer extractive
+# Non-AI summaries only
+python main.py --topic "climate change" --summarizer extractive
 
 # JSON only, with detailed logs
-python main.py --topic "climate change" --format json --verbose
+python main.py --topic "renewable energy" --format json --verbose
 ```
 
 ---
 
 ## Output
 
-Results are printed in the terminal and saved in a new folder for each run, for
-example `output/cybersecurity_2026-11-12T10-30-00Z/`:
+Each run creates its own folder, for example
+`output/cybersecurity_2026-11-13T08-42-43Z/`, containing:
 
 | File | Contents |
 |------|----------|
 | `articles.json` | Full structured results |
-| `articles.csv` | Same data as a table |
-| `digest.md` | Readable digest with summaries and source links |
+| `articles.csv` | The same data as a table |
+| `digest.md` | A readable digest with summaries and links to the originals |
+
+### What the terminal and digest show
+
+- **Sources queried:** every source that was tried.
+- **Articles from:** only the sources that contributed articles, with counts.
+- **Source errors:** any source that failed, with a short reason.
+- For each article: title, publisher, date, summary, link, and how the summary
+  was made (*Gemini*, or *extractive*). Articles based only on a short excerpt
+  are clearly flagged.
 
 ### JSON format
+
+Placeholder values:
 
 ```json
 {
   "topic": "cybersecurity",
-  "generated_at": "2026-11-12T10:30:00Z",
+  "generated_at": "2026-11-13T08:42:43Z",
   "days": 7,
   "requested_limit": 5,
   "article_count": 5,
-  "sources_queried": ["gdelt", "guardian", "google_news"],
-  "source_errors": [],
+  "sources_queried": ["guardian", "gdelt", "gnews", "google_news"],
+  "articles_by_source": {"gnews": 4, "google_news": 1},
+  "summarizer_requested": "gemini",
+  "source_errors": [{"source": "gdelt", "error": "GDELT rate limit reached (HTTP 429)"}],
   "shortfall_note": null,
   "articles": [
     {
       "title": "<title>",
       "source": "<publisher>",
       "url": "https://example.com/article",
-      "published_at": "2026-11-11T08:15:00Z",
-      "retrieved_at": "2026-11-12T10:29:41Z",
-      "discovered_via": "gdelt",
+      "published_at": "2026-11-12T18:23:00Z",
+      "retrieved_at": "2026-11-13T08:42:10Z",
+      "discovered_via": "gnews",
       "excerpt": "<extracted article text>",
       "text_type": "full_text",
       "summary": "<grounded summary>",
@@ -321,9 +351,10 @@ example `output/cybersecurity_2026-11-12T10-30-00Z/`:
 
 | Field | Meaning |
 |-------|---------|
-| `text_type` | `full_text` (extracted from the page or API), `feed_excerpt` (only a short snippet was available) or `none` |
+| `text_type` | `full_text` (real article prose), `feed_excerpt` (only a short snippet was available) or `none` |
 | `summary_method` | `gemini` or `extractive` |
 | `missing_fields` | Any field that could not be found, such as `["published_at"]` |
+| `articles_by_source` | How many articles each source contributed |
 | `source_errors` | Sources that failed during the run, and why |
 | `shortfall_note` | Why fewer articles than requested were returned, if that happened |
 
@@ -331,15 +362,20 @@ example `output/cybersecurity_2026-11-12T10-30-00Z/`:
 
 ## Sample run
 
-A complete sample run is included in [`samples/`](samples/):
+A real sample run is included in [`samples/`](samples/):
 
 ```bash
-python main.py --topic "<sample topic>" --limit 5
+python main.py --topic "cybersecurity" --limit 5
 ```
 
-- [`samples/articles.json`](samples/)
-- [`samples/articles.csv`](samples/)
-- [`samples/digest.md`](samples/)
+- [`samples/digest.md`](samples/digest.md): readable digest
+- [`samples/articles.json`](samples/articles.json): structured data
+- [`samples/articles.csv`](samples/articles.csv): table
+
+In this run, 5 articles were collected from GNews and Google News. GDELT was
+rate-limited and reported as a source error, and Gemini was unavailable at the
+time (free-tier quota), so the summaries were produced by the extractive
+fallback. Both are recorded honestly in the output.
 
 ---
 
@@ -349,28 +385,27 @@ python main.py --topic "<sample topic>" --limit 5
 pytest
 ```
 
-Tests use saved sample responses in `tests/fixtures/`, so they don't need an
-internet connection or API keys. They cover source parsing, URL normalization,
-deduplication, date and relevance filtering, text extraction, and summarizer
-behavior, including the fallback when Gemini isn't available.
+The tests use saved sample responses in `tests/fixtures/`, so they need no
+internet connection or API keys. They cover source parsing and error handling,
+URL normalization, deduplication, date, relevance and quality filters, title
+cleaning, text extraction, summarizer behavior (including retries and
+fallbacks) and the exported files.
 
 ---
 
 ## Design notes
 
-### News sources and collection method
+### Why these sources
 
-| Source | Method | Why it was chosen |
-|--------|--------|-------------------|
-| GDELT DOC 2.0 | JSON API (`requests`) | Free and keyless, covers thousands of publishers, and returns direct article URLs |
-| The Guardian | JSON API (`requests`) | Free, and returns full article text, so no scraping is needed |
-| GNews | JSON API (`requests`) | Free key, multi-publisher search with direct article URLs and descriptions |
-| Google News RSS | RSS feed (`feedparser`) | Free and keyless, with broad, up-to-date coverage |
+| Source | Method | Why |
+|--------|--------|-----|
+| The Guardian | JSON API | Free, reliable, and returns full article text, so no scraping is needed |
+| GNews | JSON API | Free key, searches many publishers, returns direct article links |
+| Google News RSS | RSS feed (`feedparser`) | Free and keyless, broad and very up-to-date coverage |
+| GDELT DOC 2.0 | JSON API | Free and keyless, global coverage with direct links |
 
-Using four independent sources means the program still works if one is down,
-rate-limited or missing a key. Article text for GDELT, GNews and Google News results is
-extracted with `trafilatura`, which works on most news sites without
-site-specific rules.
+Using four independent sources means NewsPulse keeps working if one is down,
+rate-limited or missing a key.
 
 ### Responsible collection
 
@@ -378,29 +413,30 @@ site-specific rules.
 - `robots.txt` is checked before fetching a page.
 - Requests identify the program with a clear user agent and wait between calls
   to the same site.
-- Paywalls, logins and CAPTCHAs are never bypassed. Those articles fall back to
-  the short snippet and are marked as excerpts.
+- Paywalls, logins and CAPTCHAs are never bypassed. Blocked articles are skipped
+  or fall back to their snippet, and are flagged.
 
-### Cleaning
+### Keeping results relevant and clean
 
-- **Date filter:** articles older than `--days` are dropped. Articles without a
-  date are kept but flagged.
-- **Relevance:** every keyword in the topic must appear in the title or the
-  start of the article text.
+- **Relevance:** the topic (or a common short form, such as "EV" for "electric
+  vehicles") must appear in the title or the first 500 characters of the article.
+- **Quality:** video and podcast pages, live blogs, academic papers and
+  auto-generated stock-price posts are skipped. "Full text" must contain real
+  sentences, so menus and schedules don't count.
 - **Deduplication:** by normalized URL (tracking parameters removed), then by
-  near-identical headline, which catches the same story syndicated to several sites.
-- **Variety:** results are mixed across publishers so the digest isn't dominated
-  by one site.
+  near-identical headline, which catches the same story published on several sites.
+- **Variety:** results are mixed across sources and publishers.
 
-### Summarization method
+### Summarization
 
-- **Gemini (default):** `gemini-3.8-flash` with a low temperature. The prompt
-  contains only the article's title and extracted text, and tells the model to use
-  only facts from that text in 2–4 sentences. Gemini never searches for, selects or
-  fetches articles.
+- **Gemini (default):** the prompt contains only the article's title and extracted
+  text, and tells the model to use only facts from that text in 2–4 sentences, at
+  a low temperature. Gemini never searches for, selects or fetches articles.
+  Requests time out after 30 seconds; busy errors are retried twice, and quota or
+  model errors switch the rest of the run to the extractive summarizer.
 - **Extractive (fallback, no AI):** scores sentences by word frequency and picks
-  the 2–4 most important ones in their original order. Every sentence comes
-  straight from the article, so nothing unsupported can be added.
+  the 2–4 most important complete sentences, in their original order. Every
+  sentence comes straight from the article, so nothing unsupported can be added.
 
 Each article records which method produced its summary.
 
@@ -408,30 +444,31 @@ Each article records which method produced its summary.
 
 ## Known limitations
 
-- **Google News links:** Google wraps article links in encoded redirects. They're
-  decoded with `googlenewsdecoder`, but this can break when Google changes its
-  format. When decoding fails, the Google link is kept; it still opens the article.
-- **Blocked or paywalled sites:** some publishers block automated requests. Those
-  articles fall back to a short snippet, which gives a shorter summary.
-- **GDELT rate limit:** GDELT allows roughly one request every few seconds and
-  sometimes returns an error instead of data. The run continues with the other sources.
-- **Guardian coverage:** that source only includes The Guardian's own articles.
-- GNews free plan results are delayed by about 12 hours, so the very newest
-  articles may come only from Google News.
-- **Relevance filtering** is keyword-based and can miss articles that describe the
-  topic in different words.
-- **Gemini summaries** are constrained by the prompt to the article text, but like
-  any LLM output they can occasionally paraphrase imprecisely. The extractive
-  summarizer avoids this at the cost of less natural wording.
-- Gemini model names change over time; set GEMINI_MODEL in .env if the default is retired.
+- **GDELT rate limiting:** GDELT strictly limits automated requests and often
+  returns HTTP 429, even after long waits. When that happens, the run continues
+  with the other sources, as in the included sample run.
+- **Gemini free tier:** the free quota is small and the service is sometimes busy.
+  Affected articles automatically use the extractive summarizer. Model names also
+  change over time; set `GEMINI_MODEL` in `.env` if the default is retired.
+- **GNews delay:** free-plan results are delayed by about 12 hours, so the very
+  newest articles come from Google News.
+- **Google News links** are encoded redirects. They're decoded with
+  `googlenewsdecoder`, which can break if Google changes the format; the original
+  link is kept if decoding fails.
+- **Blocked or paywalled sites** are skipped or reduced to a short excerpt.
+- **Extractive summaries** are always faithful to the article but can read less
+  smoothly, especially when a sentence refers to something explained earlier.
+- **Keyword relevance** can miss articles that describe the topic in different words.
 - **English only:** sources are queried for English-language results.
+- **Run time:** about a minute per run, longer if Gemini needs to retry.
+
+---
 
 ## Future improvements
 
 - Group articles about the same story across publishers
-- Add a short "top themes" overview at the start of the digest
+- A short "top themes" overview at the start of the digest
 - Scheduled runs, such as a daily digest
-- More sources, such as publisher RSS feeds or other news APIs
 - Semantic relevance filtering using embeddings instead of keywords
-- A lightweight web interface
 - Fetch articles in parallel to speed up runs
+- A lightweight web interface
