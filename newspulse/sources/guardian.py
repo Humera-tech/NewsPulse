@@ -65,6 +65,7 @@ class GuardianSource(NewsSource):
             raise SourceUnavailable("GUARDIAN_API_KEY not set")
         params = {
             "q": topic,
+            "type": "article",  # excludes live blogs, galleries, video and audio
             "from-date": (utc_now() - timedelta(days=days)).strftime("%Y-%m-%d"),
             "order-by": "newest",
             "page-size": str(PAGE_SIZE),
