@@ -11,6 +11,7 @@ from rich.panel import Panel
 from rich.rule import Rule
 from rich.text import Text
 
+from newspulse.exporter import articles_from
 from newspulse.models import Article, RunResult
 
 
@@ -64,10 +65,11 @@ def show_results(result: RunResult, console: Console | None = None) -> None:
     console.print(Rule(f"[bold]NewsPulse · {result.topic}[/bold]"))
     console.print(
         f"[bold]{result.article_count}[/bold] of {result.requested_limit} requested articles · "
-        f"last {result.days} days · sources: {', '.join(result.sources_queried)} · "
-        f"generated {result.generated_at}",
+        f"last {result.days} days · generated {result.generated_at}",
         justify="center",
     )
+    console.print(f"Sources queried: {', '.join(result.sources_queried) or 'none'}", justify="center")
+    console.print(f"Articles from: {articles_from(result)}", justify="center")
     console.print()
     for index, article in enumerate(result.articles, start=1):
         console.print(_article_panel(index, article))
