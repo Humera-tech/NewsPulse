@@ -1,0 +1,92 @@
+{
+  "topic": "cybersecurity",
+  "generated_at": "2026-11-13T08:42:43Z",
+  "days": 7,
+  "requested_limit": 5,
+  "article_count": 5,
+  "summarizer_requested": "gemini",
+  "sources_queried": [
+    "gdelt",
+    "guardian",
+    "gnews",
+    "google_news"
+  ],
+  "articles_by_source": {
+    "gnews": 4,
+    "google_news": 1
+  },
+  "source_errors": [
+    {
+      "source": "gdelt",
+      "error": "GDELT rate limit reached (HTTP 429)"
+    }
+  ],
+  "shortfall_note": null,
+  "articles": [
+    {
+      "title": "OpenAI new Cybersecurity Tools sparks debate over Security Risks and Corporate Dependence on AI",
+      "source": "Cybersecurity Insiders",
+      "url": "https://www.cybersecurity-insiders.com/openai-new-cybersecurity-tools-sparks-debate-over-security-risks-and-corporate-dependence-on-ai/",
+      "published_at": "2026-11-13T06:10:16Z",
+      "retrieved_at": "2026-11-13T08:42:18Z",
+      "discovered_via": "google_news",
+      "excerpt": "OpenAI has reportedly issued a cybersecurity warning to organizations, highlighting the growing risks businesses could face as cyber threats become increasingly sophisticated. The company is encouraging organizations to strengthen their digital security infrastructure by adopting advanced AI-powered cybersecurity solutions designed to identify, prevent, and respond to potential attacks.\nThe warning comes as OpenAI expands its presence in the cybersecurity sector with the introduction of two new security initiatives under its Daybreak Security Platform: Daybreak Red Team and Daybreak Defense Factory. These tools are designed to support organizations in identifying security vulnerabilities, testing their existing defenses, and improving their ability to withstand cyberattacks.\nThese newly introduced solutions focus on two important aspects of cybersecurity. Daybreak Red Team is intended to help organizations identify weaknesses in their digital systems through controlled security testing, commonly known as penetration testing. This approach allows security professionals to examine systems from an attacker’s perspective and identify vulnerabilities before malicious actors can exploit them.\nMeanwhile, Daybreak Defense Factory focuses on strengthening cybersecurity defenses by helping organizations detect potential threats and improve their security responses. With cyberattacks becoming more complex and frequent, AI-powered tools could play an increasingly important role in helping businesses monitor their networks, protect sensitive information, and respond to emerging threats more efficiently.\nHowever, OpenAI’s growing involvement in cybersecurity has also generated discussions across social media platforms and technology communities. Some users have questioned whether the company’s approach could encourage businesses to become increasingly dependent on its AI-powered security products. Critics have raised concerns about the possibility of a technology provider using the growing threat of cyberattacks to promote its own services.\nThe debate also highlights broader concerns surrounding the influence of major AI companies in critical areas such as cybersecurity. As organizations increasingly rely on artificial intelligence to manage sensitive operations, questions about data privacy, vendor dependence, transparency, and long-term security responsibilities are becoming more important.\nAt the same time, cybersecurity experts have long emphasized that businesses cannot afford to ignore evolving digital threats. AI-powered security solutions may offer valuable capabilities, but adopting any platform should involve careful evaluation of its effectiveness, reliability, compatibility, and potential risks.\nUltimately, OpenAI’s latest cybersecurity initiatives reflect the growing intersection between artificial intelligence and digital security. While tools such as Daybreak Red Team and Daybreak Defense Factory could provide organizations with additional ways to strengthen their defenses, businesses must ensure that their cybersecurity strategies remain comprehensive rather than depending entirely on a single technology provider.\nThe discussion surrounding OpenAI’s announcement therefore extends beyond the launch of two new products. It raises an important question for organizations: how can they benefit from AI-driven cybersecurity advancements without becoming overly dependent on the companies which develop them?\nJoin our LinkedIn group Information Security Community!",
+      "text_type": "full_text",
+      "summary": "OpenAI has reportedly issued a cybersecurity warning to organizations, highlighting the growing risks businesses could face as cyber threats become increasingly sophisticated. The company is encouraging organizations to strengthen their digital security infrastructure by adopting advanced AI-powered cybersecurity solutions designed to identify, prevent, and respond to potential attacks. The warning comes as OpenAI expands its presence in the cybersecurity sector with the introduction of two new security initiatives under its Daybreak Security Platform: Daybreak Red Team and Daybreak Defense Factory. Ultimately, OpenAI’s latest cybersecurity initiatives reflect the growing intersection between artificial intelligence and digital security.",
+      "summary_method": "extractive",
+      "missing_fields": []
+    },
+    {
+      "title": "Cybersecurity researchers warn of Gmail flaw that survives password resets",
+      "source": "WDIV ClickOnDetroit",
+      "url": "https://www.clickondetroit.com/news/local/2026/11/12/cybersecurity-researchers-warn-of-gmail-flaw-that-survives-password-resets/",
+      "published_at": "2026-11-12T18:37:35Z",
+      "retrieved_at": "2026-11-13T08:42:24Z",
+      "discovered_via": "gnews",
+      "excerpt": "FILE - In this May 1, 2019, file photo a man walks past a Google sign outside with a span of the Bay Bridge at rear in San Francisco. (AP Photo/Jeff Chiu, File) (Jeff Chiu, Copyright 2019 The Associated Press. All rights reserved)\nCybersecurity researchers warn Gmail users to check their security settings because hackers may be able to access their Gmail accounts even if the password has been changed.\nResearchers say hackers are doing it with malware, but it’s unclear whether they can bypass multi-factor authentication.\nRecommended Videos\nCybersecurity experts urge people to set up authentication, and it’s not a bad idea to change your password anyway. As always, never click unknown links.\nIf you think your account might be impacted, stop using it right away and report it to Google.\nCopyright 2026 by WDIV ClickOnDetroit - All rights reserved.\nWhat sets the three e-bike classes apart?\nWhat sets the three e-bike classes apart?\nFirst snowfall of the season expected Friday across SE Michigan\nFirst snowfall of the season expected Friday across SE Michigan\nPolice chief reveals what officers found inside former Hyatt Hotel\nPolice chief reveals what officers found inside former Hyatt Hotel\nMeet the voice behind Detroit City FC\nMeet the voice behind Detroit City FC\nNvidia CEO exit tests AI expansion\nNvidia CEO exit tests AI expansion\nWill your neighborhood see snow tomorrow?\nWill your neighborhood see snow tomorrow?\nCallie Calls It: Lions or Patriots?\nCallie Calls It: Lions or Patriots?\nWoman killed in domestic murder-suicide honored at candlelight vigil\nWoman killed in domestic murder-suicide honored at candlelight vigil\nMichigan's forgotten war in Russia\nMichigan's forgotten war in Russia\nExhibit honors veterans at Detroit Design Museum\nExhibit honors veterans at Detroit Design Museum\nDog missing after escaping from grooming salon\nDog missing after escaping from grooming salon\nAdvice from a teacher to students who are seeking perfection\nAdvice from a teacher to students who are seeking perfection\nWoman receives insurance bills for medical treatments she never had\nWoman receives insurance bills for medical treatments she never had\nSenator-Elect Abdul El-Sayed's favorite parade memory\nSenator-Elect Abdul El-Sayed's favorite parade memory\nRemembering the Edmond Fitzgerald (not a typo)\nRemembering the Edmond Fitzgerald (not a typo)\nDTW opens new cell phone lot ahead of Thanksgiving travel\nDTW opens new cell phone lot ahead of Thanksgiving travel\n4 arrested in stolen auto parts case\n4 arrested in stolen auto parts case\nTwo horses tried to ride a Detroit city bus\nTwo horses tried to ride a Detroit city bus\nDetroit Clutch GM Manon Rheaume talks pro women's hockey in Detroit\nDetroit Clutch GM Manon Rheaume talks pro women's hockey in Detroit\n51 years ago the Edmund Fitzgerald sank in Lake Superior\n51 years ago the Edmund Fitzgerald sank in Lake Superior",
+      "text_type": "full_text",
+      "summary": "Cybersecurity researchers warn Gmail users to check their security settings because hackers may be able to access their Gmail accounts even if the password has been changed. Cybersecurity experts urge people to set up authentication, and it’s not a bad idea to change your password anyway.",
+      "summary_method": "extractive",
+      "missing_fields": []
+    },
+    {
+      "title": "Goodbody client portal down for more than two days after cybersecurity incident",
+      "source": "The Irish Times",
+      "url": "https://www.irishtimes.com/business/2026/11/12/goodbody-client-portal-down-for-more-than-two-days-after-cybersecurity-incident/",
+      "published_at": "2026-11-12T18:23:09Z",
+      "retrieved_at": "2026-11-13T08:42:32Z",
+      "discovered_via": "gnews",
+      "excerpt": "Goodbody’s online client portal was down for more than two days as of Thursday evening after the stockbroking and wealth management firm identified a cybersecurity incident.\n“On 10th November, 2026, Goodbody identified a security incident affecting our Goodbody Connect platform. We immediately activated our incident response plan and as a precautionary measure we took the Goodbody online platform offline while we investigate the issue,” a spokesman said.\n“We would like to reassure our clients that there has been no identified impact to our client funds. We take the protection of our clients’ accounts very seriously and have taken and continue to take appropriate steps in response to this incident.”\nInvestigations so far have found no evidence of clients’ assets being affected. The firm, which is part of AIB, and independent cybersecurity specialists working on the issue are continuing to investigate whether there has been any breach of customers’ data.\nREAD MORE\nThe cybersecurity specialists are working to get the system back up and running and build more resilience into it, according to sources.\nA spokesman for Goodbody said customers have been able to do business with the firm by email and phone. Goodbody is led by chief executive Martin Tormey and employs more than 400 staff.\nHousing: construction slowdown, price-to-income running at twice the EU average, and the rise of the approved housing body sector\nA message on Goodbody’s website said on Thursday evening that the portal remained offline and that the firm is “working to restore the service as soon as possible”.\nGoodbody, which dates back to 1874, was bought by AIB in September 2021 for €138 million. It cut jobs in its investment banking unit three years ago amid a global slowdown in deal-making and fundraising, and an expected acceleration of large companies leaving the Irish stock market.\nHowever, it has been building up its asset and wealth management business in recent years as it plays belated catch-up to its larger rival Davy, which stole a march on its main competitor in the past dozen years, snapping up assets amid consolidation in this space.\nGoodbody’s profits soared 109 per cent to €16.1 million last year, helped by a surge in fee income across its wealth management and investment banking activities.\nFirm revenue rose to €113.7 million from €92.7 million, with the fee portion of that jumping by 30 per cent to almost €75 million.\n[ Panic over cyberattacks plays straight into the hands of those behind themOpens in new window ]",
+      "text_type": "full_text",
+      "summary": "Goodbody’s online client portal was down for more than two days as of Thursday evening after the stockbroking and wealth management firm identified a cybersecurity incident. “On 10th November, 2026, Goodbody identified a security incident affecting our Goodbody Connect platform. We immediately activated our incident response plan and as a precautionary measure we took the Goodbody online platform offline while we investigate the issue,” a spokesman said. A message on Goodbody’s website said on Thursday evening that the portal remained offline and that the firm is “working to restore the service as soon as possible”.",
+      "summary_method": "extractive",
+      "missing_fields": []
+    },
+    {
+      "title": "Vanderbilt hack: Clark Lea talks cybersecurity before Alabama football game",
+      "source": "AL.com",
+      "url": "https://www.al.com/alabamafootball/2026/11/how-vanderbilt-hack-has-impacted-prep-for-alabama-football-game-some-hiccups.html",
+      "published_at": "2026-11-12T18:21:29Z",
+      "retrieved_at": "2026-11-13T08:42:36Z",
+      "discovered_via": "gnews",
+      "excerpt": "Vanderbilt was the victim of a major cybersecurity incident.",
+      "text_type": "feed_excerpt",
+      "summary": "Vanderbilt was the victim of a major cybersecurity incident.",
+      "summary_method": "extractive",
+      "missing_fields": []
+    },
+    {
+      "title": "United Airlines blocks AI agents from booking flights, citing cybersecurity risks",
+      "source": "TechCrunch",
+      "url": "https://techcrunch.com/2026/11/12/united-airlines-blocks-ai-agents-from-booking-flights-citing-cybersecurity-risks/",
+      "published_at": "2026-11-12T17:17:58Z",
+      "retrieved_at": "2026-11-13T08:42:39Z",
+      "discovered_via": "gnews",
+      "excerpt": "United Airlines said it will restrict access to AI agents seeking to book flights and manage reservations on their users’ behalf, citing a risk to cybersecurity and undermining federal regulations.\nThe airline is the latest American corporate giant to prevent customers from using AI agents and autonomous assistants to access their systems. The move comes as airlines and banks are struggling to differentiate between real customers and AI systems operating on their behalf, such as when users share their logins with their AI assistants. Sharing passwords with apps and assistants can create security risks if those credentials get leaked or exposed.\nUnited warns that “sharing account credentials with personal, third-party, AI assistants can expose sensitive information, and actions taken by these tools may result in unintended purchases, account changes, or use of MileagePlus miles.”\nThe airline also warns of a risk of violating federal aviation rules, such as requiring that a human completes flight check-ins to acknowledge that their bags do not contain banned substances.\n“As a result, United is taking steps to restrict access — directly within our digital platforms and indirectly via travel agencies and aggregators — to prohibit use by unauthorized, third-party personal AI agents or assistants,” the airline said in a statement. “This work includes updates to our booking, ticketing and distribution policies.”\nThe airline’s move follows a warning from banks, including Bank of America, which last week urged customers not to share their passwords with their AI assistants.",
+      "text_type": "full_text",
+      "summary": "United Airlines said it will restrict access to AI agents seeking to book flights and manage reservations on their users’ behalf, citing a risk to cybersecurity and undermining federal regulations. The airline is the latest American corporate giant to prevent customers from using AI agents and autonomous assistants to access their systems. “As a result, United is taking steps to restrict access — directly within our digital platforms and indirectly via travel agencies and aggregators — to prohibit use by unauthorized, third-party personal AI agents or assistants,” the airline said in a statement.",
+      "summary_method": "extractive",
+      "missing_fields": []
+    }
+  ]
+}
