@@ -45,6 +45,16 @@ def parse_iso(value: str | None) -> datetime | None:
     return dt.astimezone(timezone.utc)
 
 
+def shorten_message(text: str | None, limit: int = 120) -> str:
+    """Return the first line of a message, whitespace-collapsed, cut at a word boundary."""
+    first_line = (text or "").strip().splitlines()[0] if (text or "").strip() else ""
+    message = " ".join(first_line.split())
+    if len(message) <= limit:
+        return message
+    cut = message[:limit].rsplit(" ", 1)[0].rstrip(" ,;:-(")
+    return f"{cut or message[:limit]}..."
+
+
 def _is_empty(value: object) -> bool:
     """Return True for None, empty strings and whitespace-only strings."""
     return value is None or (isinstance(value, str) and not value.strip())
@@ -100,7 +110,9 @@ class RunResult(BaseModel):
     days: int
     requested_limit: int
     article_count: int
+    summarizer_requested: str | None = None
     sources_queried: list[str] = Field(default_factory=list)
+    articles_by_source: dict[str, int] = Field(default_factory=dict)
     source_errors: list[SourceError] = Field(default_factory=list)
     shortfall_note: str | None = None
     articles: list[Article] = Field(default_factory=list)
