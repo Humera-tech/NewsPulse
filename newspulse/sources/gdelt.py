@@ -20,12 +20,9 @@ GDELT_TIMEOUT = 30.0  # GDELT often takes 15-25 s to answer
 RATE_LIMIT_WAIT = 6.0
 
 
-def _short_body(text: str | None, limit: int = 300) -> str:
-    """Collapse whitespace in a response body and cut it to `limit` characters."""
-    body = " ".join((text or "").split())
-    if not body:
-        return "(empty body)"
-    return body if len(body) <= limit else body[:limit].rstrip() + "..."
+def _body_for_log(text: str | None) -> str:
+    """Whole response body on one line, for the DEBUG log."""
+    return " ".join((text or "").split()) or "(empty body)"
 
 
 def build_query(topic: str) -> str:
@@ -54,8 +51,8 @@ def parse_gdelt_response(body: str) -> list[Candidate]:
     try:
         data = json.loads(text)
     except json.JSONDecodeError:
-        snippet = " ".join(text.split())[:160]
-        raise SourceUnavailable(f"GDELT returned a non-JSON response: {snippet}") from None
+        logger.debug("GDELT non-JSON response body: %s", _body_for_log(text))
+        raise SourceUnavailable("GDELT returned a non-JSON response") from None
     if not isinstance(data, dict):
         raise SourceUnavailable("GDELT returned an unexpected JSON structure")
 
@@ -107,7 +104,7 @@ class GdeltSource(NewsSource):
         logger.info("GDELT request %d: GET %s -> HTTP %s in %.1fs", attempt, final_url,
                     response.status_code, time.monotonic() - started)
         if response.status_code == 429:
-            logger.warning("GDELT 429 response body: %s", _short_body(response.text))
+            logger.debug("GDELT 429 response body: %s", _body_for_log(response.text))
         return response
 
     def search(self, topic: str, days: int) -> list[Candidate]:
@@ -122,9 +119,7 @@ class GdeltSource(NewsSource):
         }
         response = self._get(params)
         if response.status_code == 429:
-            raise SourceUnavailable(
-                f"GDELT rate limit reached (HTTP 429): {_short_body(response.text, 120)}"
-            )
+            raise SourceUnavailable("GDELT rate limit reached (HTTP 429)")
         if response.status_code >= 400:
             raise SourceUnavailable(f"GDELT returned HTTP {response.status_code}")
         return parse_gdelt_response(response.text)
