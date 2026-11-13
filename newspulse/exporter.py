@@ -60,7 +60,24 @@ def _article_warning(article: Article) -> str | None:
     return f"> ⚠️ {'; '.join(notes).capitalize()}." if notes else None
 
 
-def _article_markdown(index: int, article: Article) -> list[str]:
+def _summary_label(article: Article, summarizer_requested: str | None) -> str | None:
+    """Say how the summary was made; 'Gemini unavailable' only if Gemini was asked for."""
+    if article.summary_method == "gemini":
+        return "*Summary: Gemini*"
+    if article.summary_method == "extractive":
+        if summarizer_requested == "gemini":
+            return "*Summary: extractive (Gemini unavailable)*"
+        return "*Summary: extractive*"
+    return None
+
+
+def articles_from(result: RunResult) -> str:
+    """'google_news (3), guardian (1)' for the sources that contributed articles."""
+    counts = result.articles_by_source
+    return ", ".join(f"{name} ({count})" for name, count in counts.items()) or "none"
+
+
+def _article_markdown(index: int, article: Article, summarizer_requested: str | None = None) -> list[str]:
     """Render one article as a block of Markdown lines."""
     date = article.published_at[:10] if article.published_at else "date unknown"
     publisher = article.source or "Unknown publisher"
@@ -71,6 +88,9 @@ def _article_markdown(index: int, article: Article) -> list[str]:
         lines += ["*No summary available.*", ""]
     if article.url:
         lines += [f"[Read the original]({article.url})", ""]
+    label = _summary_label(article, summarizer_requested)
+    if label:
+        lines += [label, ""]
     warning = _article_warning(article)
     if warning:
         lines += [warning, ""]
@@ -85,7 +105,9 @@ def build_digest(result: RunResult) -> str:
         f"*Generated {result.generated_at} · last {result.days} days · "
         f"{result.article_count} of {result.requested_limit} requested articles*",
         "",
-        f"**Sources used:** {', '.join(result.sources_queried) or 'none'}",
+        f"**Sources queried:** {', '.join(result.sources_queried) or 'none'}",
+        "",
+        f"**Articles from:** {articles_from(result)}",
         "",
     ]
     if result.shortfall_note:
@@ -98,7 +120,7 @@ def build_digest(result: RunResult) -> str:
     if not result.articles:
         lines += ["*No articles were found for this topic.*", ""]
     for index, article in enumerate(result.articles, start=1):
-        lines += _article_markdown(index, article)
+        lines += _article_markdown(index, article, result.summarizer_requested)
     return "\n".join(lines).rstrip() + "\n"
 
 
