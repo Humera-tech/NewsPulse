@@ -9,6 +9,7 @@ from dataclasses import dataclass
 import requests
 
 from newspulse.config import Settings
+from newspulse.models import shorten_message
 
 logger = logging.getLogger(__name__)
 
@@ -66,7 +67,7 @@ def safe_search(source: NewsSource, topic: str, days: int) -> tuple[list[Candida
     try:
         candidates = source.search(topic, days)
     except Exception as exc:  # noqa: BLE001 - one failing source must never stop the run
-        message = describe_error(exc)
+        message = shorten_message(describe_error(exc))
         logger.debug("Source %s error detail: %r", source.name, exc)
         logger.warning("Source %s failed: %s", source.name, message)
         return [], message
