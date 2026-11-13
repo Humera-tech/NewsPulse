@@ -10,12 +10,20 @@ from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 from rapidfuzz import fuzz
 
-from newspulse.config import ACADEMIC_URL_PATTERNS, TOPIC_SHORT_FORMS
+from newspulse.config import (
+    ACADEMIC_URL_PATTERNS,
+    FINANCE_SPAM_PATTERNS,
+    MEDIA_URL_PATTERNS,
+    TOPIC_SHORT_FORMS,
+)
 from newspulse.models import parse_iso, utc_now
 
 TITLE_SIMILARITY_THRESHOLD = 90
-RELEVANCE_WINDOW_CHARS = 1500  # single-word topics
-PHRASE_WINDOW_CHARS = 500  # multi-word topics
+SAME_HEADLINE_THRESHOLD = 60  # page title vs feed title, to reject unrelated page titles
+RELEVANCE_WINDOW_CHARS = 500  # topic must appear in the title or this much of the text
+
+_FINANCE_SPAM_RE = re.compile("|".join(f"(?:{p})" for p in FINANCE_SPAM_PATTERNS), re.IGNORECASE)
+_SUFFIX_SEPARATORS = (" | ", " - ")
 
 TRACKING_PARAMS = frozenset(
     {
@@ -160,11 +168,68 @@ def is_relevant(topic: str, title: str | None, text: str | None) -> bool:
     if not keywords:
         return True
     if len(keywords) >= 2:
-        parts = (_tokens(title or ""), _tokens((text or "")[:PHRASE_WINDOW_CHARS]))
+        parts = (_tokens(title or ""), _tokens((text or "")[:RELEVANCE_WINDOW_CHARS]))
         return any(contains_phrase(part, phrase) for part in parts for phrase in topic_phrases(topic))
     haystack = f"{title or ''} {(text or '')[:RELEVANCE_WINDOW_CHARS]}"
     present = set(_tokens(haystack))
     return all(keyword in present for keyword in keywords)
+
+
+def is_finance_spam(title: str | None) -> bool:
+    """Return True for auto-generated stock-ticker posts (see FINANCE_SPAM_PATTERNS)."""
+    return bool(title) and bool(_FINANCE_SPAM_RE.search(title or ""))
+
+
+# ---------------------------------------------------------------- titles
+
+
+def publisher_slug(name: str | None) -> str:
+    """Comparable publisher key: 'The Guardian' and 'theguardian.com' -> 'theguardian'."""
+    value = (name or "").strip().lower().removeprefix("www.")
+    if "." in value and " " not in value:
+        value = value.split(".")[0]
+    return re.sub(r"[^a-z0-9]", "", value)
+
+
+def clean_title(title: str, publisher: str | None) -> str:
+    """Drop breadcrumbs after ' > ' and a trailing ' | X' / ' - X' when X is the publisher."""
+    cleaned = " ".join(title.split())
+    if " > " in cleaned:
+        cleaned = cleaned.split(" > ", 1)[0].strip()
+    target = publisher_slug(publisher)
+    changed = bool(target)
+    while changed:
+        changed = False
+        for separator in _SUFFIX_SEPARATORS:
+            head, sep, tail = cleaned.rpartition(separator)
+            if sep and head.strip() and publisher_slug(tail) == target:
+                cleaned, changed = head.strip(), True
+    return cleaned or " ".join(title.split())
+
+
+def repair_gdelt_spacing(title: str) -> str:
+    """Undo GDELT's extra spaces: '( LON : SYS )' -> '(LON:SYS)', '2 . 8 %' -> '2.8%'."""
+    text = " ".join(title.split())
+    text = re.sub(r"\(\s+", "(", text)  # no space after (
+    text = re.sub(r"\s+([,.:;)%!?])", r"\1", text)  # no space before , . : ; ) % ! ?
+    text = re.sub(r"(\d)\.\s+(\d)", r"\1.\2", text)  # 2. 8 -> 2.8
+    previous = None
+    while previous != text:  # Ph. D. -> Ph.D. ; U. S. -> U.S.
+        previous = text
+        text = re.sub(r"\b([A-Z]|Ph)\.\s+(?=[A-Z]\.)", r"\1.", text)
+    text = re.sub(r"\(([A-Z]{2,12}):\s+([A-Z0-9.\-]{1,10})\)", r"(\1:\2)", text)  # (LON: SYS)
+    return text
+
+
+def same_headline(a: str, b: str, threshold: int = SAME_HEADLINE_THRESHOLD) -> bool:
+    """Return True if two titles describe the same headline (word-set similarity)."""
+    return fuzz.token_set_ratio(a.lower(), b.lower()) >= threshold
+
+
+def is_media_url(url: str, patterns: Sequence[str] = MEDIA_URL_PATTERNS) -> bool:
+    """Return True for video, podcast, gallery and live pages (whole path segments only)."""
+    segments = {s for s in urlsplit(url).path.lower().split("/") if s}
+    return any(pattern.strip("/").lower() in segments for pattern in patterns)
 
 
 def is_academic_url(url: str, patterns: Sequence[str] = ACADEMIC_URL_PATTERNS) -> bool:
